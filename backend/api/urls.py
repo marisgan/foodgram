@@ -1,6 +1,5 @@
 from rest_framework.routers import DefaultRouter
 from django.urls import include, path
-from djoser import views as djoser_views
 
 from api.views import (
     IngredientViewSet, RecipeViewSet, TagViewSet, CustomUserViewSet

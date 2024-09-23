@@ -203,9 +203,9 @@ class RecipeViewSet(viewsets.ModelViewSet):
         shopping_list_txt = "Список покупок:\n\n"
         for item in shopping_list:
             shopping_list_txt += (
-                f'{item['ingredient__name']} '
-                f'({item['ingredient__measurement_unit']}) — '
-                f'{item['total_amount']}\n'
+                f"{item['ingredient__name']} "
+                f"({item['ingredient__measurement_unit']}) — "
+                f"{item['total_amount']}\n"
             )
 
         response = HttpResponse(
