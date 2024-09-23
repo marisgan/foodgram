@@ -97,6 +97,12 @@ const RecipeCreate = ({ onEdit }) => {
 
   const checkIfDisabled = () => {
     if (
+      recipeIngredients.length === 0
+    ) {
+      setSubmitError({ submitError: "Нажмите Добавить ингредиент!" });
+      return true;
+    }
+    if (
       recipeText === "" ||
       recipeName === "" ||
       recipeIngredients.length === 0 ||
