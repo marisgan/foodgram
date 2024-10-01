@@ -23,7 +23,11 @@ class Command(BaseCommand):
                     slug=tag['slug'],
                 )
 
-            self.stdout.write(self.style.SUCCESS(f'Теги успешно импортированы из {file_path}!'))
+            self.stdout.write(
+                self.style.SUCCESS(
+                    f'Теги успешно импортированы из {file_path}!'
+                )
+            )
 
         except FileNotFoundError:
             self.stdout.write(self.style.ERROR(f'Файл не найден: {file_path}'))

@@ -194,9 +194,9 @@ class RecipeManageSerializer(serializers.ModelSerializer):
         if duplicates:
             duplicate_names = model.objects.filter(
                 id__in=duplicates).values_list('name', flat=True)
+            names = ', '.join(duplicate_names)
             raise serializers.ValidationError({
-                f'{field}': f'Следующие {field_ru} повторяются: {', '.join(
-                    duplicate_names)}'
+                f'{field}': f'Следующие {field_ru} повторяются: {names}'
             })
 
     def validate(self, data):
