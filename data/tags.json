@@ -1,0 +1,55 @@
+[
+    {
+        "name": "Завтрак",
+        "slug": "breakfast"
+
+    },
+    {
+        "name": "Обед",
+        "slug": "lunch"
+    },
+    {
+        "name": "Ужин",
+        "slug": "dinner"
+    },
+    {
+        "name": "Десерт",
+        "slug": "desert"
+    },
+    {
+        "name": "Глютен-фри",
+        "slug": "gluten-free"
+    },
+    {
+        "name": "Без лактозы",
+        "slug": "lactose-free"
+    },
+    {
+        "name": "Веган",
+        "slug": "vegan"
+    },
+    {
+        "name": "Вегетарианские",
+        "slug": "vegetarian"
+    },
+    {
+        "name": "Кето",
+        "slug": "keto"
+    },
+    {
+        "name": "Перекус",
+        "slug": "snacks"
+    },
+    {
+        "name": "Выпечка",
+        "slug": "baking"
+    },
+    {
+        "name": "Суп",
+        "slug": "soup"
+    },
+    {
+        "name": "Сыроедение",
+        "slug": "raw"
+    }
+]

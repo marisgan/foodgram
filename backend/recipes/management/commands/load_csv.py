@@ -21,10 +21,10 @@ class Command(BaseCommand):
             next(reader)
 
             for row in reader:
-                name, unit = row
+                name, measurement_unit = row
                 Ingredient.objects.create(
                     name=name,
-                    unit=unit,
+                    measurement_unit=measurement_unit,
                 )
 
         self.stdout.write(self.style.SUCCESS('Данные успешно загружены'))

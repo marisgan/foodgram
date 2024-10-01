@@ -1,13 +1,16 @@
-from django.shortcuts import get_object_or_404, redirect
-from django.urls import reverse
+from django.http import HttpResponseRedirect
+from hashids import Hashids
 
-from .models import Recipe
+from .constants import FRONTEND_RECIPES_URL
 
 
-def redirect_to_recipe(request, short_id):
+hashids = Hashids(min_length=6, salt='my_salt')
+
+
+def redirect_to_recipe(request, short_code):
     """Перенаправление по короткой ссылке на страницу рецепта"""
-
-    recipe = get_object_or_404(Recipe, short_id=short_id)
-    recipe_url = reverse('api:recipe-detail', args=[recipe.id])
-
-    return redirect(recipe_url.replace("/api", ""))
+    recipe_id = hashids.decode(short_code)[0]
+    frontend_url = request.build_absolute_uri(
+        f'{FRONTEND_RECIPES_URL}{recipe_id}/'
+    )
+    return HttpResponseRedirect(frontend_url)
