@@ -28,7 +28,7 @@ from .permissions import IsAuthorOrReadOnly
 from .serializers import (
     AvatarSerializer, MemberSerializer,
     MemberWithRecipesSerializer, IngredientSerializer,
-    RecipeManageSerializer, RecipeSerializer,
+    RecipeWriteSerializer, RecipeSerializer,
     RecipeMinifiedSerializer, TagSerializer
 )
 
@@ -89,7 +89,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
 
     def get_serializer_class(self):
         if self.action in ['create', 'update', 'partial_update']:
-            return RecipeManageSerializer
+            return RecipeWriteSerializer
         return RecipeSerializer
 
     def perform_create(self, serializer):

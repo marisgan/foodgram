@@ -1,18 +1,14 @@
 from collections import Counter
 
-from django.contrib.auth import get_user_model
 from djoser.serializers import UserSerializer, UserCreateSerializer
 from drf_extra_fields.fields import Base64ImageField
 from rest_framework import serializers
 
 from recipes.models import (
     FavoriteRecipe, Ingredient, Product,
-    Recipe, ShoppingRecipe, Subscription, Tag
+    Recipe, ShoppingRecipe, Subscription, Tag, User
 )
 from recipes.constants import MIN_INGREDIENT_AMOUNT, MIN_COOKING_TIME
-
-
-User = get_user_model()
 
 
 class AvatarSerializer(serializers.ModelSerializer):
@@ -29,8 +25,8 @@ class MemberSerializer(UserSerializer):
 
     class Meta(UserSerializer.Meta):
         model = User
-        fields = UserSerializer.Meta.fields + (
-            'username', 'first_name', 'last_name',
+        fields = (
+            *UserSerializer.Meta.fields,
             'is_subscribed', 'avatar'
         )
         read_only_fields = ('is_subscribed', 'avatar')
@@ -51,15 +47,6 @@ class MemberSerializer(UserSerializer):
         return (
             author.is_subscribed if hasattr(author, 'is_subscribed') else
             calculate_is_subscribed()
-        )
-
-
-class MemberCreateSerializer(UserCreateSerializer):
-
-    class Meta(UserCreateSerializer.Meta):
-        model = User
-        fields = UserCreateSerializer.Meta.fields + (
-            'username', 'first_name', 'last_name',
         )
 
 
@@ -158,7 +145,7 @@ class ProductCreateSerializer(serializers.ModelSerializer):
         return value
 
 
-class RecipeManageSerializer(serializers.ModelSerializer):
+class RecipeWriteSerializer(serializers.ModelSerializer):
     ingredients = ProductCreateSerializer(many=True)
     tags = serializers.PrimaryKeyRelatedField(
         many=True, queryset=Tag.objects.all()
@@ -181,39 +168,37 @@ class RecipeManageSerializer(serializers.ModelSerializer):
             )
         return value
 
-    def is_empty(self, value, field, field_ru):
+    def is_empty(self, value, field):
         if not value:
             raise serializers.ValidationError({
-                f'{field}': f'Поле "{field_ru}" обязательно для загрузки!'
+                field: 'Обязательно для загрузки!'
             })
 
-    def find_dublicates(self, ids, model, field, field_ru):
-        ids_counts = Counter(ids)
+    def are_dublicates(self, ids, model, field):
         duplicates = [
-            id for id, count in ids_counts.items() if count > 1
+            id for id, count in Counter(ids).items() if count > 1
         ]
         if duplicates:
             duplicate_names = model.objects.filter(
                 id__in=duplicates).values_list('name', flat=True)
-            names = ', '.join(duplicate_names)
             raise serializers.ValidationError({
-                f'{field}': f'Следующие {field_ru} повторяются: {names}'
+                field: f'Повторяются: {duplicate_names}'
             })
 
     def validate(self, data):
         image = data.get('image')
-        self.is_empty(image, 'image', 'Фотография')
+        self.is_empty(image, 'image')
+
         tags = data.get('tags')
-        self.is_empty(tags, 'tags', 'Теги')
-        tag_ids = [tag.id for tag in tags]
-        self.find_dublicates(tag_ids, Tag, 'tags', 'Теги')
+        self.is_empty(tags, 'tags')
+        self.are_dublicates(
+            [tag.id for tag in tags], Tag, 'tags')
+
         ingredients = data.get('ingredients')
-        self.is_empty(ingredients, 'ingredients', 'Ингредиенты')
-        ingredient_ids = [
-            ingredient['ingredient'].id for ingredient in ingredients
-        ]
-        self.find_dublicates(
-            ingredient_ids, Ingredient, 'ingredients', 'Ингредиенты'
+        self.is_empty(ingredients, 'ingredients')
+        self.are_dublicates(
+            [ingredient['ingredient'].id for ingredient in ingredients],
+            Ingredient, 'ingredients'
         )
         return data
 
@@ -221,13 +206,13 @@ class RecipeManageSerializer(serializers.ModelSerializer):
         return RecipeSerializer(instance, context=self.context).data
 
     def create_products(self, ingredients_data, recipe):
-        Product.objects.bulk_create([
+        Product.objects.bulk_create(
             Product(
                 recipe=recipe,
                 ingredient=ingredient_item['ingredient'],
                 amount=ingredient_item['amount']
             ) for ingredient_item in ingredients_data
-        ])
+        )
 
     def create(self, validated_data):
         ingredients_data = validated_data.pop('ingredients')
@@ -238,18 +223,14 @@ class RecipeManageSerializer(serializers.ModelSerializer):
         return recipe
 
     def update(self, instance, validated_data):
-        ingredients_data = validated_data.pop('ingredients', None)
         tags_data = validated_data.pop('tags', None)
-        instance = super().update(instance, validated_data)
+        instance.tags.set(tags_data)
 
-        if tags_data:
-            instance.tags.set(tags_data)
+        ingredients_data = validated_data.pop('ingredients', None)
+        Product.objects.filter(recipe=instance).delete()
+        self.create_products(ingredients_data, instance)
 
-        if ingredients_data:
-            Product.objects.filter(recipe=instance).delete()
-            self.create_products(ingredients_data, instance)
-
-        return instance
+        return super().update(instance, validated_data)
 
 
 class MemberWithRecipesSerializer(MemberSerializer):
@@ -258,7 +239,7 @@ class MemberWithRecipesSerializer(MemberSerializer):
 
     class Meta(MemberSerializer.Meta):
         model = User
-        fields = MemberSerializer.Meta.fields + ('recipes', 'recipes_count')
+        fields = (*MemberSerializer.Meta.fields, 'recipes', 'recipes_count')
 
     def get_recipes(self, author):
         request = self.context.get('request')

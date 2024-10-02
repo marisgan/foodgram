@@ -2,7 +2,7 @@ from django_filters import rest_framework as filters
 from recipes.models import Recipe, Ingredient
 
 
-class BooleanFilter(filters.BooleanFilter):
+class OneZeroFilter(filters.BooleanFilter):
     def filter(self, qs, value):
         if value == '1':
             value = True
@@ -14,8 +14,8 @@ class BooleanFilter(filters.BooleanFilter):
 class RecipeFilter(filters.FilterSet):
     author = filters.NumberFilter(field_name='author__id')
     tags = filters.AllValuesMultipleFilter(field_name='tags__slug')
-    is_favorited = BooleanFilter(field_name='is_favorited')
-    is_in_shopping_cart = BooleanFilter(field_name='is_in_shopping_cart')
+    is_favorited = OneZeroFilter(field_name='is_favorited')
+    is_in_shopping_cart = OneZeroFilter(field_name='is_in_shopping_cart')
 
     class Meta:
         model = Recipe
