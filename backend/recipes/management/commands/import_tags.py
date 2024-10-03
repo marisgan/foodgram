@@ -17,11 +17,10 @@ class Command(BaseCommand):
             with open(file_path, 'r', encoding='utf-8') as file:
                 tags_data = json.load(file)
 
-            for tag in tags_data:
-                Tag.objects.get_or_create(
-                    name=tag['name'],
-                    slug=tag['slug'],
-                )
+            Tag.objects.bulk_create(
+                [Tag(**tag) for tag in tags_data],
+                ignore_conflicts=True
+            )
 
             self.stdout.write(
                 self.style.SUCCESS(

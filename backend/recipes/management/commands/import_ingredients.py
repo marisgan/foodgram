@@ -18,11 +18,10 @@ class Command(BaseCommand):
             with open(file_path, 'r', encoding='utf-8') as file:
                 ingredients_data = json.load(file)
 
-            for ingredient in ingredients_data:
-                Ingredient.objects.get_or_create(
-                    name=ingredient['name'],
-                    measurement_unit=ingredient['measurement_unit'],
-                )
+            Ingredient.objects.bulk_create(
+                [Ingredient(**ingredient) for ingredient in ingredients_data],
+                ignore_conflicts=True
+            )
 
             self.stdout.write(
                 self.style.SUCCESS(
