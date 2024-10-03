@@ -45,13 +45,28 @@ ALLOWED_HOSTS=
 ```
 
 ### Как запустить бэкенд локально без Docker:
-1. Создайте виртуальное окружение:
+1. Клонируйте репозиторий:
+```git clone https://github.com/marisgan/foodgram.git```
+2. В корне проекта создайте файл .env и укажите в нем следующие переменные:
+```code .env```
+- DJANGO_SECRET_KEY='your-secret-key'
+- DJANGO_DEBUG=True
+- HASHID_SALT='your-salt'
+3. Создайте виртуальное окружение:
 ```python -m venv venv```
-2. Установите зависимости:
+4. Установите зависимости:
 ```pip install -r requirements.txt```
-3. Перейдите в папку backend и в терминале введите команду:
-```python manage.py runserver```
+5. Перейдите в папку backend:
+```cd backend```
+6. Выполните миграции:
 ```python manage.py migrate```
+7. Импортируйте данные:
+```
+python manage.py import_ingredients
+python manage.py import_tags
+```
+8. Запустите проект:
+```python manage.py runserver```
 
 ### Команды импорта данных (тегов и ингредиентов):
 ```
@@ -60,5 +75,7 @@ python manage.py import_tags
 ```
 
 ### Автор
-Финальное задание курса Python Backend Developer Яндекс Практикума. Выполнила Марина Асташова (marisgan@gmail.com)
+Финальное задание курса [Python Backend Developer Яндекс Практикум](https://practicum.yandex.ru/backend-developer-ab/)
+
+Выполнила  [Марина Асташова](https://github.com/marisgan)
 

@@ -1,23 +1,20 @@
 from django.contrib import admin
-from django.contrib.auth import get_user_model
 from django.contrib.auth.admin import UserAdmin
 from django.contrib.auth.models import Group
 from django.db.models import Count, Prefetch
-from django.utils.html import format_html, mark_safe
+from django.urls import reverse
+from django.utils.safestring import mark_safe
 
 from .constants import MEDIUM_COOKING, QUICK_COOKING
 from .models import (
-    Ingredient, Member, Recipe, Tag, Subscription, Product,
-    ShoppingRecipe, FavoriteRecipe
+    FavoriteRecipe, Ingredient, Product, Recipe,
+    ShoppingRecipe, Subscription, Tag, User
 )
 
 
 admin.site.empty_value_display = 'Не задано'
 
 admin.site.unregister(Group)
-
-
-User = get_user_model()
 
 
 class HasRecordsFilter(admin.SimpleListFilter):
@@ -50,10 +47,10 @@ class SubscribersCountFilter(HasRecordsFilter):
     parameter_name = 'subscribers_count'
 
 
-@admin.register(Member)
+@admin.register(User)
 class MemberAdmin(UserAdmin):
     list_display = (
-        'username', 'email', 'first_name', 'last_name', 'avatar',
+        'username', 'email', 'first_name', 'last_name', 'avatar_tag',
         'recipes_count', 'subscriptions_count', 'subscribers_count'
     )
     list_filter = (
@@ -67,34 +64,42 @@ class MemberAdmin(UserAdmin):
     list_display_links = ('username',)
 
     def get_queryset(self, request):
-        queryset = super().get_queryset(request)
-        queryset = queryset.annotate(
+        users = super().get_queryset(request)
+        users = users.annotate(
             recipes_count=Count('recipes'),
             subscriptions_count=Count('subscriptions'),
-            subscribers_count=Count('subscribers')
+            subscribers_count=Count('subscribed_to')
         )
-        return queryset
+        return users
 
+    @mark_safe
     @admin.display(ordering='-recipes_count',
-                   description='Число рецептов')
+                   description='Рецептов')
     def recipes_count(self, user):
         count = user.recipes_count
         if count:
-            url = (
-                f'/admin/recipes/recipe/?author__id__exact={user.id}'
-            )
-            return format_html('<a href="{}">{}</a>', url, count)
+            url = reverse(
+                'admin:recipes_recipe_changelist'
+            ) + f'?author__id__exact={user.id}'
+            return f'<a href="{url}">{count}</a>'
         return count
 
     @admin.display(ordering='-subscriptions_count',
-                   description='Число подписок')
+                   description='Подписок')
     def subscriptions_count(self, user):
         return user.subscriptions_count
 
     @admin.display(ordering='-subscribers_count',
-                   description='Число подписчиков')
+                   description='Подписчиков')
     def subscribers_count(self, user):
         return user.subscribers_count
+
+    @mark_safe
+    @admin.display(description='Аватар')
+    def avatar_tag(self, user):
+        return (
+            f'<img src="{user.avatar.url}" width="30" height="30"/>'
+        ) if user.avatar else ''
 
 
 class ProductInline(admin.TabularInline):
@@ -102,52 +107,32 @@ class ProductInline(admin.TabularInline):
     extra = 1
 
 
-class RecipeAuthorFilter(admin.SimpleListFilter):
-    title = 'Автор'
-    parameter_name = 'author'
-
-    def lookups(self, request, model_admin):
-        authors = User.objects.filter(recipes__isnull=False).distinct()
-        return [(
-            author.id, author.get_full_name() or author.username
-        ) for author in authors]
-
-    def queryset(self, request, queryset):
-        if self.value():
-            return queryset.filter(author_id=self.value())
-        return queryset
-
-
 class CookingTimeFilter(admin.SimpleListFilter):
-    title = 'Время готовки'
+    title = 'Время готовки (мин)'
     parameter_name = 'cooking_time'
 
     def lookups(self, request, model_admin):
         quick = Recipe.objects.filter(
             cooking_time__lt=QUICK_COOKING).count()
         medium = Recipe.objects.filter(
-            cooking_time__gte=QUICK_COOKING,
-            cooking_time__lte=MEDIUM_COOKING).count()
+            cooking_time__lt=MEDIUM_COOKING).count()
         long = Recipe.objects.filter(
-            cooking_time__gt=MEDIUM_COOKING).count()
+            cooking_time__gte=MEDIUM_COOKING).count()
 
         return [
-            ('quick', f'Быстрые - до {QUICK_COOKING} минут ({quick})'),
+            ('quick', f'Быстрее {QUICK_COOKING} ({quick})'),
             ('medium',
-             f'Средние - {QUICK_COOKING}-{MEDIUM_COOKING} минут ({medium})'),
-            ('long', f'Долгие - более {MEDIUM_COOKING} минут ({long})')
+             f'Быстрее {MEDIUM_COOKING} ({medium})'),
+            ('long', f'Долго ({long})')
         ]
 
     def queryset(self, request, queryset):
         if self.value() == 'quick':
             return queryset.filter(cooking_time__lt=QUICK_COOKING)
         elif self.value() == 'medium':
-            return queryset.filter(
-                cooking_time__gte=QUICK_COOKING,
-                cooking_time__lte=MEDIUM_COOKING
-            )
+            return queryset.filter(cooking_time__lt=MEDIUM_COOKING)
         elif self.value() == 'long':
-            return queryset.filter(cooking_time__gt=MEDIUM_COOKING)
+            return queryset.filter(cooking_time__gte=MEDIUM_COOKING)
         return queryset
 
 
@@ -158,15 +143,17 @@ class RecipeAdmin(admin.ModelAdmin):
         'tags_pile', 'products_pile',
         'favorites_count', 'shopping_count'
     )
-    list_editable = ('name',)
     search_fields = ('name', 'author',)
-    list_filter = ('tags', RecipeAuthorFilter, CookingTimeFilter)
+    list_filter = (
+        ('author', admin.RelatedOnlyFieldListFilter),
+        CookingTimeFilter, 'tags',
+    )
     list_display_links = ('id',)
     inlines = (ProductInline,)
 
     def get_queryset(self, request):
-        queryset = super().get_queryset(request)
-        queryset = queryset.prefetch_related(
+        recipes = super().get_queryset(request)
+        recipes = recipes.prefetch_related(
             'tags',
             Prefetch(
                 'products',
@@ -176,27 +163,28 @@ class RecipeAdmin(admin.ModelAdmin):
             favorites_count=Count('favoriterecipes'),
             shopping_count=Count('shoppingrecipes')
         )
-        return queryset
+        return recipes
 
+    @mark_safe
     @admin.display(description='Теги')
     def tags_pile(self, recipe):
-        tags = recipe.tags.all()
-        return mark_safe('<br>'.join([tag.name for tag in tags]))
+        return '<br>'.join(tag.name for tag in recipe.tags.all())
 
+    @mark_safe
     @admin.display(description='Продукты')
     def products_pile(self, recipe):
-        products = recipe.products.all()
         product_list = [
             f'{product.ingredient.name}'
             f'({product.ingredient.measurement_unit}) - '
             f'{product.amount}'
-            for product in products
+            for product in recipe.products.all()
         ]
-        return mark_safe('<br>'.join(product_list))
+        return '<br>'.join(product_list)
 
+    @mark_safe
     @admin.display(description='Изображение')
     def image_tag(self, recipe):
-        return mark_safe(
+        return (
             f'<img src="{recipe.image.url}" width="100" height="100" />'
         )
 
@@ -212,15 +200,14 @@ class RecipeAdmin(admin.ModelAdmin):
 @admin.register(Tag)
 class TagAdmin(admin.ModelAdmin):
     list_display = ('id', 'name', 'slug',)
-    list_editable = ('name', 'slug',)
     list_display_links = ('id',)
 
 
 @admin.register(Ingredient)
 class IngredientAdmin(admin.ModelAdmin):
     list_display = ('id', 'name', 'measurement_unit')
-    list_editable = ('name', 'measurement_unit',)
     search_fields = ('name',)
+    list_filter = ('measurement_unit', )
     list_display_links = ('id',)
 
 

@@ -1,5 +1,3 @@
-import os
-
 from django.core.files.base import ContentFile
 from django.conf import settings
 from django.db.models import Count, Exists, OuterRef, Sum, Value, BooleanField
@@ -20,7 +18,7 @@ from rest_framework.response import Response
 
 from recipes.models import (
     FavoriteRecipe, Ingredient, Product, Recipe, ShoppingRecipe,
-    Tag, Subscription, User
+    Subscription, Tag, User
 )
 from .filters import IngredientFilter, RecipeFilter
 from .pagination import PageNumberLimitPagination
@@ -32,6 +30,7 @@ from .serializers import (
     RecipeMinifiedSerializer, TagSerializer
 )
 from .utils import render_shopping_list
+
 
 hashids = Hashids(min_length=6, salt=settings.HASHID_SALT)
 

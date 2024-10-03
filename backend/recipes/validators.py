@@ -8,6 +8,6 @@ def validate_username(username):
     if invalid_chars:
         raise ValidationError(
             'Имя пользователя содержит недопустимые символы: '
-            f'{", ".join(set(invalid_chars))}'
+            f'{(set(invalid_chars))}'
         )
     return username
