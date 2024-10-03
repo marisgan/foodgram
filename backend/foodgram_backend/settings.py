@@ -1,7 +1,10 @@
 # flake8: noqa
 import os
-
+from dotenv import load_dotenv
 from pathlib import Path
+
+dotenv_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env')
+load_dotenv(dotenv_path)
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -110,6 +113,8 @@ MEDIA_ROOT = BASE_DIR / 'media'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 AUTH_USER_MODEL = 'recipes.Member'
+
+HASHID_SALT = os.getenv('HASHID_SALT', default='my_default_salt')
 
 REST_FRAMEWORK = {
     'DEFAULT_FILTER_BACKENDS': [

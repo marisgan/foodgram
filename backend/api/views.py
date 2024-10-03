@@ -1,6 +1,7 @@
-import io
+import os
 
-from django.contrib.auth import get_user_model
+from django.core.files.base import ContentFile
+from django.conf import settings
 from django.db.models import Count, Exists, OuterRef, Sum, Value, BooleanField
 from django.http import FileResponse
 from django.shortcuts import get_object_or_404
@@ -19,9 +20,8 @@ from rest_framework.response import Response
 
 from recipes.models import (
     FavoriteRecipe, Ingredient, Product, Recipe, ShoppingRecipe,
-    Tag, Subscription
+    Tag, Subscription, User
 )
-from recipes.utils import render_shopping_list
 from .filters import IngredientFilter, RecipeFilter
 from .pagination import PageNumberLimitPagination
 from .permissions import IsAuthorOrReadOnly
@@ -31,11 +31,9 @@ from .serializers import (
     RecipeWriteSerializer, RecipeSerializer,
     RecipeMinifiedSerializer, TagSerializer
 )
+from .utils import render_shopping_list
 
-
-User = get_user_model()
-
-hashids = Hashids(min_length=6, salt='my_salt')
+hashids = Hashids(min_length=6, salt=settings.HASHID_SALT)
 
 
 class TagViewSet(viewsets.ReadOnlyModelViewSet):
@@ -95,31 +93,32 @@ class RecipeViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
 
+    @staticmethod
     def handle_favorite_shopping_actions(
-            self, request, pk, model, success_remove_msg
+            request, pk, model, success_remove_msg
     ):
         recipe = get_object_or_404(Recipe, pk=pk)
         user = request.user
 
-        if request.method == 'POST':
-            _, created = model.objects.get_or_create(
-                user=user, recipe=recipe)
-            if created:
-                return Response(
-                    RecipeMinifiedSerializer(recipe).data,
-                    status=status.HTTP_201_CREATED)
-            raise ValidationError({'detail': 'Рецепт уже есть в списке'})
+        if request.method == 'DELETE':
+            get_object_or_404(model, user=user, recipe=recipe).delete()
+            return Response(
+                {'detail': success_remove_msg},
+                status=status.HTTP_204_NO_CONTENT
+            )
 
-        get_object_or_404(model, user=user, recipe=recipe).delete()
+        _, created = model.objects.get_or_create(
+            user=user, recipe=recipe)
+        if not created:
+            raise ValidationError({'detail': 'Рецепт уже есть в списке'})
         return Response(
-            {'detail': success_remove_msg},
-            status=status.HTTP_204_NO_CONTENT
-        )
+            RecipeMinifiedSerializer(recipe).data,
+            status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=['post', 'delete'],
             permission_classes=[IsAuthenticated], url_path='favorite')
     def favorite(self, request, pk=None):
-        return self.handle_favorite_shopping_actions(
+        return RecipeViewSet.handle_favorite_shopping_actions(
             request, pk, FavoriteRecipe,
             'Рецепт успешно удален из избранного'
         )
@@ -127,7 +126,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post', 'delete'],
             permission_classes=[IsAuthenticated], url_path='shopping_cart')
     def shopping_cart(self, request, pk=None):
-        return self.handle_favorite_shopping_actions(
+        return RecipeViewSet.handle_favorite_shopping_actions(
             request, pk, ShoppingRecipe,
             'Рецепт успешно удален из списка покупок'
         )
@@ -139,39 +138,30 @@ class RecipeViewSet(viewsets.ModelViewSet):
         user = request.user
         shopping_recipes = Recipe.objects.filter(
             shoppingrecipes__user=user)
-        recipes_names = shopping_recipes.values_list('name', flat=True)
         products = (
             Product.objects.filter(recipe__in=shopping_recipes)
             .values('ingredient__name', 'ingredient__measurement_unit')
             .annotate(total_amount=Sum('amount'))
             .order_by('ingredient__name')
         )
-        shopping_list_txt = render_shopping_list(products, recipes_names)
-        shopping_list_bytes = shopping_list_txt.encode('utf-8')
-        shopping_list_io = io.BytesIO()
-        shopping_list_io.write(shopping_list_bytes)
-        shopping_list_io.seek(0)
-
-        response = FileResponse(
-            shopping_list_io, content_type='text/plain; charset=utf-8'
+        shopping_list = render_shopping_list(
+            products, shopping_recipes
+        ).encode('utf-8')
+        return FileResponse(
+            ContentFile(shopping_list),
+            as_attachment=True,
+            filename='shopping_list.txt',
+            content_type='text/plain; charset=utf-8'
         )
-        response[
-            'Content-Disposition'] = 'attachment; filename="shopping_list.txt"'
-        return response
 
     @action(detail=True, methods=['get'],
             permission_classes=[AllowAny], url_path='get-link')
     def get_link(self, request, pk=None):
-        if not pk:
-            return Response(
-                {'error': 'Recipe ID not found'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        short_code = hashids.encode(int(pk))
+        recipe = get_object_or_404(Recipe, pk=pk)
+        short_code = hashids.encode(int(recipe.pk))
         relative_url = reverse(
             'recipes:short-link-redirect', args=[short_code])
         full_url = request.build_absolute_uri(relative_url)
-
         return Response({'short-link': full_url})
 
 
@@ -180,13 +170,22 @@ class MemberViewSet(UserViewSet):
     queryset = User.objects.all()
     serializer_class = MemberSerializer
     pagination_class = PageNumberLimitPagination
+    permission_classes_by_action = {
+        'default': [IsAuthenticatedOrReadOnly],
+        'list': [AllowAny],
+        'retrieve': [AllowAny],
+        'create': [AllowAny],
+    }
 
     def get_permissions(self):
-        if self.action in ['list', 'retrieve', 'create']:
-            return [AllowAny()]
-        elif self.action == 'me':
+        if self.action == 'me':
             return [IsAuthenticated()]
-        return [IsAuthenticatedOrReadOnly()]
+        return [
+            permission() for permission in
+            self.permission_classes_by_action.get(
+                self.action, self.permission_classes_by_action['default']
+            )
+        ]
 
     def get_queryset(self):
         user = self.request.user
@@ -234,25 +233,24 @@ class MemberViewSet(UserViewSet):
             raise ValidationError(
                 {'detail': 'Нельзя подписаться на самого себя'})
 
-        if request.method == 'POST':
-            if Subscription.objects.filter(
-                user=user, author=author
-            ).exists():
-                raise ValidationError(
-                    {'detail': f'Вы уже подписаны на {author.username}'})
-
-            Subscription.objects.create(user=user, author=author)
+        if request.method == 'DELETE':
+            get_object_or_404(
+                Subscription, user=user, author=author
+            ).delete()
             return Response(
-                MemberWithRecipesSerializer(
-                    author, context={'request': request}).data,
-                status=status.HTTP_201_CREATED
-            )
+                {'status': f'Вы отписались от {author.username}'},
+                status=status.HTTP_204_NO_CONTENT)
 
-        get_object_or_404(
-            Subscription, user=user, author=author).delete()
+        _, created = Subscription.objects.get_or_create(
+            user=user, author=author)
+        if not created:
+            raise ValidationError(
+                {'detail': f'Вы уже подписаны на {author.username}'})
         return Response(
-            {'status': f'Вы отписались от {author.username}'},
-            status=status.HTTP_204_NO_CONTENT)
+            MemberWithRecipesSerializer(
+                author, context={'request': request}).data,
+            status=status.HTTP_201_CREATED
+        )
 
     @action(detail=False, methods=['get'],
             permission_classes=[IsAuthenticated], url_path='subscriptions')

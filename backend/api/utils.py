@@ -1,7 +1,7 @@
 from datetime import datetime
 
 
-def render_shopping_list(products, recipes_names):
+def render_shopping_list(products, recipes):
     today = datetime.now().strftime('%d-%m-%Y')
     products_info = [
         f"{i}. {product['ingredient__name'].capitalize()} "
@@ -9,6 +9,7 @@ def render_shopping_list(products, recipes_names):
         f"{product['total_amount']}"
         for i, product in enumerate(products, start=1)
     ]
+    recipes_names = [f'{recipe.name}' for recipe in recipes]
 
     return '\n'.join([
         f'Список покупок на дату: {today}',
