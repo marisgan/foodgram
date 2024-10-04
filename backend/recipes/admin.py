@@ -5,7 +5,7 @@ from django.db.models import Count, Prefetch
 from django.urls import reverse
 from django.utils.safestring import mark_safe
 
-from .constants import MEDIUM_COOKING, QUICK_COOKING
+from .constants import COOKING_TIME_FILTERS
 from .models import (
     FavoriteRecipe, Ingredient, Product, Recipe,
     ShoppingRecipe, Subscription, Tag, User
@@ -112,27 +112,20 @@ class CookingTimeFilter(admin.SimpleListFilter):
     parameter_name = 'cooking_time'
 
     def lookups(self, request, model_admin):
-        quick = Recipe.objects.filter(
-            cooking_time__lt=QUICK_COOKING).count()
-        medium = Recipe.objects.filter(
-            cooking_time__lt=MEDIUM_COOKING).count()
-        long = Recipe.objects.filter(
-            cooking_time__gte=MEDIUM_COOKING).count()
-
-        return [
-            ('quick', f'Быстрее {QUICK_COOKING} ({quick})'),
-            ('medium',
-             f'Быстрее {MEDIUM_COOKING} ({medium})'),
-            ('long', f'Долго ({long})')
+        return [(
+            key,
+            f'{key} ({COOKING_TIME_FILTERS[key][0]} - '
+            f'{COOKING_TIME_FILTERS[key][1]} мин)'
+        ) for key in COOKING_TIME_FILTERS
         ]
 
     def queryset(self, request, queryset):
-        if self.value() == 'quick':
-            return queryset.filter(cooking_time__lt=QUICK_COOKING)
-        elif self.value() == 'medium':
-            return queryset.filter(cooking_time__lt=MEDIUM_COOKING)
-        elif self.value() == 'long':
-            return queryset.filter(cooking_time__gte=MEDIUM_COOKING)
+        filter_value = COOKING_TIME_FILTERS.get(self.value())
+        if filter_value:
+            return queryset.filter(
+                cooking_time__gte=filter_value[0],
+                cooking_time__lt=filter_value[1]
+            )
         return queryset
 
 
