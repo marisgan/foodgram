@@ -4,7 +4,7 @@ services:
     image: postgres:13.10
     env_file: .env
     volumes:
-      - pg_data:/var/lib/postgresql/data
+      - ./pg_data:/var/lib/postgresql/data
 
   backend:
     image: marisgan/foodgram_backend:latest
@@ -35,6 +35,5 @@ services:
       - media:/media
 
 volumes:
-  pg_data:
   static:
   media:
