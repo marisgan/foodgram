@@ -171,8 +171,6 @@ class MemberViewSet(UserViewSet):
     pagination_class = PageNumberLimitPagination
     permission_classes_by_action = {
         'default': [IsAuthenticatedOrReadOnly],
-        'list': [AllowAny],
-        'retrieve': [AllowAny],
         'create': [AllowAny],
     }
 
