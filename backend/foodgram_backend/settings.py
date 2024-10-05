@@ -4,12 +4,11 @@ from dotenv import load_dotenv
 from pathlib import Path
 
 load_dotenv()
+DEBUG = os.getenv('DJANGO_DEBUG', 'True').lower() in ('true', '1', 't')
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'fallback-secret-key')
-
-DEBUG = os.getenv('DJANGO_DEBUG', True)
 
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '').split()
 
@@ -58,13 +57,12 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'foodgram_backend.wsgi.application'
 
-
-DATABASES = {
-    'dev': {
+DATABASE_CONFIGS = {
+    'sqlite': {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': BASE_DIR / 'db.sqlite3',
     },
-    'production': {
+    'pgsql': {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': os.getenv('POSTGRES_DB', 'django'),
         'USER': os.getenv('POSTGRES_USER', 'django'),
@@ -73,8 +71,10 @@ DATABASES = {
         'PORT': os.getenv('DB_PORT', 5432)
     }, 
 }
-DATABASES['default'] = DATABASES['dev' if os.getenv('DJANGO_DEBUG') else 'production']
 
+DATABASES = {
+    'default': DATABASE_CONFIGS['sqlite'] if DEBUG else DATABASE_CONFIGS['pgsql']
+}
 
 AUTH_PASSWORD_VALIDATORS = [
     {
