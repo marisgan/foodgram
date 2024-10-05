@@ -3,8 +3,7 @@ import os
 from dotenv import load_dotenv
 from pathlib import Path
 
-dotenv_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env')
-load_dotenv(dotenv_path)
+load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -108,7 +107,7 @@ STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'collected_static'
 
 MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / 'media'
+MEDIA_ROOT = '/media'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
