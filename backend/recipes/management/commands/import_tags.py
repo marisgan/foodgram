@@ -11,7 +11,7 @@ class Command(BaseCommand):
     help = 'Импортирует теги из файла data/tags.json'
 
     def handle(self, *args, **kwargs):
-        file_path = os.path.join(settings.BASE_DIR, '..', 'data', 'tags.json')
+        file_path = os.path.join(settings.BASE_DIR, 'data', 'tags.json')
 
         try:
             with open(file_path, 'r', encoding='utf-8') as file:
