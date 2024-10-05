@@ -10,6 +10,8 @@ services:
     container_name: backend
     build: ./backend
     env_file: .env
+    ports:
+      - 8001:8001
     depends_on:
       - db
     volumes:
@@ -21,21 +23,21 @@ services:
     env_file: .env
     build: ./frontend
     command: cp -r /app/build/. /frontend_static/
-    # command: ["sh", "-c", "cp -r /app/build/. /usr/share/nginx/html && tail -f /dev/null"]
     volumes:
       - static:/frontend_static
-      
+
   nginx:
-    container_name: nginx
-    build: ./nginx
+    image: nginx:1.27.2
     env_file: .env
     depends_on:
       - backend
+      - frontend
     ports:
       - 80:80
     volumes:
       - static:/static
       - media:/media
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf
 
 volumes:
   pg_data:
