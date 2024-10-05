@@ -7,7 +7,7 @@ services:
       - pg_data:/var/lib/postgresql/data
 
   backend:
-    image: mvcaaa/foodgram_backend:latest
+    image: marisgan/foodgram_backend:latest
     env_file: .env
     depends_on:
       - db
@@ -16,14 +16,14 @@ services:
       - media:/media
     
   frontend:
-    image: mvcaaa/foodgram_frontend:latest
+    image: marisgan/foodgram_frontend:latest
     env_file: .env
     command: cp -r /app/build/. /frontend_static/
     volumes:
       - static:/frontend_static
 
   nginx:
-    image: mvcaaa/foodgram_nginx:latest
+    image: marisgan/foodgram_nginx:latest
     env_file: .env
     depends_on:
       - backend
