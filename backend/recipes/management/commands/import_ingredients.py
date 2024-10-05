@@ -12,7 +12,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **kwargs):
         file_path = os.path.join(
-            settings.BASE_DIR, '..', 'data', 'ingredients.json')
+            settings.BASE_DIR, 'data', 'ingredients.json')
 
         try:
             with open(file_path, 'r', encoding='utf-8') as file:
