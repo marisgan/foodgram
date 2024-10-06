@@ -13,7 +13,7 @@ services:
       - db
     volumes:
       - static:/backend_static
-      - media:/media
+      - ./media:/media
     
   frontend:
     image: marisgan/foodgram_frontend:latest
