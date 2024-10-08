@@ -53,13 +53,12 @@ ALLOWED_HOSTS=
 ```code .env```
 - DJANGO_SECRET_KEY='your-secret-key'
 - DJANGO_DEBUG=True
-- HASHID_SALT='your-salt'
-3. Создайте виртуальное окружение:
-```python -m venv venv```
-4. Установите зависимости:
-```pip install -r requirements.txt```
-5. Перейдите в папку backend:
+3. Перейдите в папку backend:
 ```cd backend```
+4. Создайте виртуальное окружение:
+```python -m venv venv```
+5. Установите зависимости:
+```pip install -r requirements.txt```
 6. Выполните миграции:
 ```python manage.py migrate```
 7. Импортируйте данные:
@@ -70,11 +69,8 @@ python manage.py import_tags
 8. Запустите проект:
 ```python manage.py runserver```
 
-### Команды импорта данных (тегов и ингредиентов):
-```
-python manage.py import_ingredients
-python manage.py import_tags
-```
+### Справка по проекту
+[Документация API](https://foodgram.marisgan.com/api/docs/)
 
 ### Автор
 Финальное задание курса [Python Backend Developer Яндекс Практикум](https://practicum.yandex.ru/backend-developer-ab/)

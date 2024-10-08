@@ -44,7 +44,7 @@ ROOT_URLCONF = 'foodgram_backend.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [os.path.join(BASE_DIR, 'templates')],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -104,7 +104,6 @@ USE_L10N = True
 
 USE_TZ = True
 
-
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'collected_static'
 
@@ -114,8 +113,6 @@ MEDIA_ROOT = '/media'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 AUTH_USER_MODEL = 'recipes.Member'
-
-HASHID_SALT = os.getenv('HASHID_SALT', default='my_default_salt')
 
 REST_FRAMEWORK = {
     'DEFAULT_FILTER_BACKENDS': [
@@ -145,6 +142,8 @@ DJOSER = {
     'LOGIN_FIELD': 'email',
     'PERMISSIONS': {
         'user_create': ['rest_framework.permissions.AllowAny'],
+        'user_list': ['rest_framework.permissions.IsAuthenticatedOrReadOnly'],
+
     }
 }
 

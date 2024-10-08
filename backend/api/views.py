@@ -1,12 +1,11 @@
 from django.core.files.base import ContentFile
-from django.conf import settings
 from django.db.models import Count, Exists, OuterRef, Sum, Value, BooleanField
 from django.http import FileResponse
 from django.shortcuts import get_object_or_404
 from django.urls import reverse
+from django.utils.encoding import smart_bytes
 from djoser.views import UserViewSet
 from django_filters.rest_framework import DjangoFilterBackend
-from hashids import Hashids
 from rest_framework import status, viewsets
 from rest_framework.exceptions import ValidationError
 from rest_framework.decorators import action
@@ -17,8 +16,8 @@ from rest_framework.permissions import (
 from rest_framework.response import Response
 
 from recipes.models import (
-    FavoriteRecipe, Ingredient, Product, Recipe, ShoppingRecipe,
-    Subscription, Tag, User
+    FavoriteRecipe, Ingredient, Product, Recipe, RecipeShortLink,
+    ShoppingRecipe, Subscription, Tag, User
 )
 from .filters import IngredientFilter, RecipeFilter
 from .pagination import PageNumberLimitPagination
@@ -29,10 +28,9 @@ from .serializers import (
     RecipeWriteSerializer, RecipeSerializer,
     RecipeMinifiedSerializer, TagSerializer
 )
-from .utils import render_shopping_list
-
-
-hashids = Hashids(min_length=6, salt=settings.HASHID_SALT)
+from .utils import (
+    generate_unique_short_code, render_shopping_list
+)
 
 
 class TagViewSet(viewsets.ReadOnlyModelViewSet):
@@ -143,9 +141,10 @@ class RecipeViewSet(viewsets.ModelViewSet):
             .annotate(total_amount=Sum('amount'))
             .order_by('ingredient__name')
         )
-        shopping_list = render_shopping_list(
-            products, shopping_recipes
-        ).encode('utf-8')
+        shopping_list = smart_bytes(
+            render_shopping_list(products, shopping_recipes)
+        )
+
         return FileResponse(
             ContentFile(shopping_list),
             as_attachment=True,
@@ -156,33 +155,32 @@ class RecipeViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['get'],
             permission_classes=[AllowAny], url_path='get-link')
     def get_link(self, request, pk=None):
+        if not Recipe.objects.filter(pk=pk).exists():
+            raise ValidationError({'detail': f'Рецепта {pk} не существует'})
         recipe = get_object_or_404(Recipe, pk=pk)
-        short_code = hashids.encode(int(recipe.pk))
+        short_link, created = RecipeShortLink.objects.get_or_create(
+            recipe=recipe
+        )
+        if created:
+            short_link.short_code = generate_unique_short_code()
+            short_link.save()
         relative_url = reverse(
-            'recipes:short-link-redirect', args=[short_code])
+            'recipes:short-link-redirect', args=[short_link.short_code])
         full_url = request.build_absolute_uri(relative_url)
         return Response({'short-link': full_url})
 
 
 class MemberViewSet(UserViewSet):
     """Вьюсет для работы с пользователями."""
+    permission_classes = (IsAuthenticatedOrReadOnly, )
     queryset = User.objects.all()
     serializer_class = MemberSerializer
     pagination_class = PageNumberLimitPagination
-    permission_classes_by_action = {
-        'default': [IsAuthenticatedOrReadOnly],
-        'create': [AllowAny],
-    }
 
     def get_permissions(self):
         if self.action == 'me':
             return [IsAuthenticated()]
-        return [
-            permission() for permission in
-            self.permission_classes_by_action.get(
-                self.action, self.permission_classes_by_action['default']
-            )
-        ]
+        return super().get_permissions()
 
     def get_queryset(self):
         user = self.request.user
