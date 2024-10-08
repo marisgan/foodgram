@@ -33,7 +33,7 @@ services:
     volumes:
       - static:/static
       - ./media:/media
-      - ./redoc.html/:/usr/share/nginx/html/redoc.html
+      - ./docs/:/usr/share/nginx/html/api/docs/
 
 volumes:
   static:
