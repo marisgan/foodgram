@@ -184,6 +184,7 @@ class RecipeAdmin(admin.ModelAdmin):
         CookingTimeFilter,
         ('tags', RelatedOnlyFieldListFilter),
         ('author', RelatedOnlyFieldListFilter),
+        ('ingredients', RelatedOnlyFieldListFilter),
     )
     list_display_links = ('id',)
     inlines = (ProductInline,)
