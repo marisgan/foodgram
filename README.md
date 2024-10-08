@@ -50,9 +50,10 @@ ALLOWED_HOSTS=
 1. Клонируйте репозиторий:
 ```git clone https://github.com/marisgan/foodgram.git```
 2. В корне проекта создайте файл .env и укажите в нем следующие переменные:
-```code .env```
+```
 - DJANGO_SECRET_KEY='your-secret-key'
 - DJANGO_DEBUG=True
+```
 3. Перейдите в папку backend:
 ```cd backend```
 4. Создайте виртуальное окружение:
