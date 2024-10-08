@@ -17,10 +17,10 @@ class Member(AbstractUser):
     """Кастомизированная модель пользователя."""
 
     email = models.EmailField(
-        'Емейл', unique=True, max_length=MAX_LENGTH_EMAIL
+        'Почта', unique=True, max_length=MAX_LENGTH_EMAIL
     )
     username = models.CharField(
-        'Юзернейм',
+        'Имя пользователя',
         validators=[validate_username],
         max_length=MAX_LENGTH_NAME, unique=True)
     first_name = models.CharField('Имя', max_length=MAX_LENGTH_NAME)
